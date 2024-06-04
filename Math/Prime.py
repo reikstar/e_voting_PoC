@@ -10,31 +10,25 @@ import gmpy2 as gmp
 #bitwise operator &, s.t x mod 2^k is x & (2^k-1). 
 def jacobi_symbol(a, n):
     if n < 0 or n & 1 == 0:
-        raise TypeError("n must be at least 0 and odd")
-    if a == 0:
-        return 0
-    if a == 1:
-        return 1
+        raise ValueError("n must be positive and odd")
     
-    e = 0
-    while a & 1 == 0:
-        a >>= 1
-        e += 1
-    if e & 1 == 0:
-        symbol = 1
-    elif n & 7 == 1 or n & 7 == 7:
-        symbol = 1
-    else:
-        symbol = -1
+    n = gmp.mpz(n) 
+    a = gmp.f_mod(a, n)
+    result = 1
 
-    if n & 3 ==  3 and a & 3 == 3:
-        symbol = -symbol
+    while a != 0:
+        while a & 1 == 0:
+            a >>= 1
+            if n & 7 in (3, 5):
+                result = -result
 
-    n1 = gmp.f_mod(n, a)
-    if a == 1:
-        return symbol
-    else:
-        return  symbol * jacobi_symbol(n1, a)
+        a, n = n, a  
+        if a & 3 == 3 and n & 3 == 3:
+            result = -result
+
+        a = a % n
+
+    return result if n == 1 else 0
 
 #It generates a random n bits odd number,
 #with most significant bit 1.
