@@ -78,4 +78,5 @@ dh_groups = {
     },
 }
 
-print(dh_groups[14].get("hex_value"))
+
+
