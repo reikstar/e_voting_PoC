@@ -1,0 +1,7 @@
+LICENSE
+README.md
+setup.py
+evoting.egg-info/PKG-INFO
+evoting.egg-info/SOURCES.txt
+evoting.egg-info/dependency_links.txt
+evoting.egg-info/top_level.txt
