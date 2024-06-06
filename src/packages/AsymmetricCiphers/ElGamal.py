@@ -2,6 +2,9 @@
 from packages.math.prime import getSafePrime, jacobi_symbol
 from packages.math.mod_expo import base_k_exp
 from secrets import randbits
+import gmpy2 as gmp
+
+K = 3
 
 class ElGamalBase:
     
@@ -25,7 +28,7 @@ class ElGamalBase:
             raise AttributeError("Group parameters must be instantiated first.")
         
         self.__priv_key = randbits(self.bits-1)
-        self.__pub_key = base_k_exp(self.generator, self.__priv_key, self.modulus, 3)
+        self.__pub_key = base_k_exp(self.generator, self.__priv_key, self.modulus, K)
 
     def set_keys(self,public,private):
         self.__pub_key = public
@@ -58,7 +61,6 @@ class ElGamalBase:
         else:
             raise AttributeError("Predefined group was used but not given group parameters.")
         
-
     @property
     def priv_key(self):
         return self.__priv_key
@@ -66,9 +68,59 @@ class ElGamalBase:
     @property
     def pub_key(self):
         return self.__pub_key
+
+
+class MulElGamal(ElGamalBase):
+
+    def __init__(self, bits, predefined_group=False):
+        super().__init__(bits, predefined_group)
+
+
+    def encrypt(self, plaintext, key):
+        if plaintext > self.modulus-1:
+            raise AttributeError("Invalid plaintext, parameter bigger than modulus.")
+        
+        encoded_val = gmp.f_mod(gmp.square(plaintext), self.modulus)
+        rnd_value = randbits(self.bits-1)
+        
+        c1 = base_k_exp(self.generator, rnd_value, self.modulus, K)
+        c2 = gmp.f_mod(gmp.mul(encoded_val, base_k_exp(key, rnd_value, self.modulus, K)), self.modulus)
+
+        return (int(c1), int(c2))
+
+    def decrypt(self, ciphertext):
+
+        c1, c2 = ciphertext[0], ciphertext[1]
+        if c2 > self.modulus - 1 or c1 > self.modulus - 1:
+            raise AttributeError("Invalid ciphertext, parameters bigger than modulus.")
+        q = (self.modulus-1) >> 1
+
+        decryption_val = gmp.invert(base_k_exp(c1, self.priv_key, self.modulus, K), self.modulus)
+        enccoded_val =  gmp.f_mod(gmp.mul(c2, decryption_val), self.modulus)
+        plaintext = base_k_exp(enccoded_val, (q+1) >> 1, self.modulus, K)
+
+        return plaintext if plaintext <= q else self.modulus - plaintext
+    
+
+x = MulElGamal(151)
+x.generate_params()
+x.generate_keys()
+
+a = x.encrypt(5123, x.pub_key)
+print(x.decrypt(a))
+
         
 
 
+
+
+
+
+
+
+
+
+    
 
 
 
