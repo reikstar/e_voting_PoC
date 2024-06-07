@@ -84,7 +84,7 @@ def getSafePrime(bits):
         # applying more expansive tests, and also check
         # if rnd_value mod prime == (prime-1)/2 according
         # to https://eprint.iacr.org/2003/186.pdf.
-        for x in prime_set[:1000]:
+        for x in prime_set[:2000]:
             remainder = gmp.f_mod(rnd_value, x)
             if remainder == 0 or remainder == ((x - 1) >> 1):
                 loop_again = True

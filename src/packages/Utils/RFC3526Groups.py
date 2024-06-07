@@ -10,7 +10,7 @@ dh_groups = {
                         83655D23 DCA3AD96 1C62F356 208552BB 9ED52907 7096966D
                         670C354E 4ABC9804 F1746C08 CA237327 FFFFFFFF FFFFFFFF
                      """,
-        "generator": 2,
+        "generator": 2, 
     },
     14: {
         "bits": 2048,
