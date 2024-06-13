@@ -1,10 +1,10 @@
 from packages.math.prime import getSafePrime, jacobi_symbol
 from packages.math.mod_expo import base_k_exp
-from packages.Utils.utils import get_rfc_group
 from secrets import randbits, randbelow
 import gmpy2 as gmp
+from threading import Thread, Event
 
-K = 3
+K = 3 #base_k_exp base
 
 class ElGamalBase:
     
@@ -204,23 +204,60 @@ class AddElGamal(ElGamalBase):
         """
         Decrypt a ciphertext with object's private key. Note that this is slower than
         classic ElGamal, because it's required to find the discrete logarithm of beta^m.
+        Using two threads to check in both directions.
 
         :param ciphertext: Tuple containing (c1, c2) components of ciphertext.
 
         :return: Decrypted ciphertext.
         """
+        result = [None]
+        event = Event()
+
+        # Brute forcing worker function for the discrete logarithm. 
+        # Both directions available for worker threads.
+        def brute_foce(direction, result, event, encoded_val):
+            product = 1
+            if direction == "left":
+                beta = gmp.invert(self.beta, self.modulus)
+                
+            if direction == "right":
+                beta = self.beta
+
+            for i in range(1, self.q + 1):
+                if event.is_set():
+                    return
+
+                product = gmp.f_mod(gmp.mul(product, beta),self.modulus)
+                if gmp.f_mod(product, self.modulus) == encoded_val:
+                    event.set()
+
+                    if direction == "left":
+                        result[0] = -i
+                        return
+                    else:
+                        result[0] = i
+                        return 
+
         c1, c2 = ciphertext[0], ciphertext[1]
         if c2 > self.modulus - 1 or c1 > self.modulus - 1:
             raise AttributeError("Invalid ciphertext, parameters bigger than modulus.")
         
         decryption_val = gmp.invert(base_k_exp(c1, self.priv_key, self.modulus, K), self.modulus)
         encoded_val =  gmp.f_mod(gmp.mul(c2, decryption_val), self.modulus)
+
+        left_thread = Thread(target=brute_foce, args = ("left", result, event, encoded_val))
+        right_thread = Thread(target=brute_foce, args = ("right", result, event, encoded_val))
+
+        left_thread.start()
+        right_thread.start()
+        left_thread.join()
+        right_thread.join()
+
+        return result[0]
+    
+
         
-        product = 1
-        for i in range(1, self.q + 1):
-            product = gmp.f_mod(gmp.mul(product, self.beta),self.modulus)
-            if gmp.f_mod(product, self.modulus) == encoded_val:
-                return i
+
         
 
 

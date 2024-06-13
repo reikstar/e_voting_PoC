@@ -16,6 +16,10 @@ def bin_exp(n, exp, mod):
 
 
 def base_k_exp(n, exp, mod, k):
+
+    if (exp == 0):
+        return 1
+    
     n = gmp.f_mod(n, mod)
     mod = gmp.mpz(mod)
 
