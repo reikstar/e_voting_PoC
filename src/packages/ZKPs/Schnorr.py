@@ -19,12 +19,10 @@ def generate_proof(p, q, generator, priv_key, pub_key, other_info = None):
         str_val = ""
 
     hash_input = str(p) + str(q) + str(generator) + str(pub_key) + str(commitment) + str_val
-    print(hash_input.encode())
-
     h.update(hash_input.encode())
-    print(int(h.hexdigest(), 16))
+   
     challenge = gmp.f_mod(int(h.hexdigest(), 16), q)
-    print(challenge)
+    
     prod = gmp.f_mod(gmp.mul(challenge, priv_key), q)
     response = gmp.f_mod(rnd_value + prod, q)
 
@@ -41,11 +39,9 @@ def verify_proof(p, q, generator, pub_key, commitment, response, other_info = No
         str_val = ""
 
     hash_input = str(p) + str(q) + str(generator) + str(pub_key) + str(commitment) + str_val
-    print(hash_input.encode())
     h.update(hash_input.encode())
-    print(int(h.hexdigest(), 16))
+   
     challenge = gmp.f_mod(int(h.hexdigest(), 16), q)
-    print(challenge)
 
     if base_k_exp(generator, response, p, K) == gmp.f_mod(gmp.mul(commitment, base_k_exp(pub_key, challenge, p, K)), p):
         return True
