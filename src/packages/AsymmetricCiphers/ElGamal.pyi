@@ -1,4 +1,3 @@
-import gmpy2 as gmp
 from typing import Tuple, Optional
 
 class ElGamalBase:
