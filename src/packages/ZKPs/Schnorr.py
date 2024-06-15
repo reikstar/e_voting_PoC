@@ -1,7 +1,6 @@
 from hashlib import sha512
 from secrets import randbelow
 from packages.math.mod_expo import base_k_exp
-from packages.AsymmetricCiphers.ElGamal import MulElGamal
 import gmpy2 as gmp
 
 K = 3 #base_k_exp base
@@ -47,6 +46,11 @@ def verify_proof(p, q, generator, pub_key, commitment, response, other_info = No
         return True
     else:
         return False
+
+
+
+
+
 
 
 
