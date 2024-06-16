@@ -1,6 +1,6 @@
 from secrets import randbits
 from Crypto.Random.random import randint
-from packages.math.PrimeSieve import prime_set  # Sieve of first 10000 primes.
+from src.packages.math.PrimeSieve import prime_set  # Sieve of first 10000 primes.
 import gmpy2 as gmp
 
 

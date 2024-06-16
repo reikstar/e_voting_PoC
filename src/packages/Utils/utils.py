@@ -1,5 +1,6 @@
 import base64
-from packages.Utils.RFC3526Groups import dh_groups
+from hashlib import sha512
+from src.packages.Utils.RFC3526Groups import dh_groups
 
 
 def hex_to_base64(hex_string):
@@ -20,3 +21,21 @@ def get_rfc_group(id):
     generator = dh_groups[id].get("generator")
 
     return (bits, modulus, generator)
+
+
+def fiat_shamir(*args):
+    """
+    Generate challenge via sha512 using the passed arguments.
+
+    :return: Hash digest casted to int.
+    """
+    h = sha512()
+    hash_input = ""
+
+    for arg in args:
+        hash_input += str(arg)
+
+    h.update(hash_input.encode())
+    challenge = int(h.hexdigest(), 16)
+
+    return challenge

@@ -1,5 +1,5 @@
 from time import time
-from packages.math.prime import getSafePrime
+from src.packages.math.prime import getSafePrime
 
 
 def measure_execution_time(func, *args, **kwargs):

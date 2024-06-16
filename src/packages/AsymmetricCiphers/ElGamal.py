@@ -1,5 +1,5 @@
-from packages.math.prime import getSafePrime, jacobi_symbol
-from packages.math.mod_expo import base_k_exp
+from src.packages.math.prime import getSafePrime, jacobi_symbol
+from src.packages.math.mod_expo import base_k_exp
 from secrets import randbits, randbelow
 import gmpy2 as gmp
 from threading import Thread, Event
