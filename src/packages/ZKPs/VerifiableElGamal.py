@@ -317,10 +317,10 @@ def re_encryption_or_proof(
             continue
         commitment_sum += rnd_list1[i]
 
-    rnd_list1[r_enc_index] = gmp.f_mod(challenge - commitment_sum, q)  # updated d_t
-    rnd_list2[r_enc_index] = gmp.f_mod(
+    rnd_list1[r_enc_index] = int(gmp.f_mod(challenge - commitment_sum, q))  # updated d_t
+    rnd_list2[r_enc_index] = int(gmp.f_mod(
         chameleon_value - gmp.mul(r_enc_factor, rnd_list1[r_enc_index]), q
-    )  # updated r_t
+    ))  # updated r_t
 
     response = (rnd_list1, rnd_list2)
 
