@@ -1,6 +1,7 @@
 import base64
 from hashlib import sha512
 from src.packages.Utils.RFC3526Groups import dh_groups
+import gmpy2 as gmp
 
 
 def hex_to_base64(hex_string):
@@ -39,3 +40,14 @@ def fiat_shamir(*args):
     challenge = int(h.hexdigest(), 16)
 
     return challenge
+
+
+def get_str_val(other_info):
+    return str(other_info) if other_info is not None else ""
+
+
+def invert_ciphertext(ciphertext, modulus):
+    x = gmp.invert(ciphertext[0], modulus)
+    y = gmp.invert(ciphertext[1], modulus)
+
+    return (x, y)

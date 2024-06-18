@@ -1,5 +1,5 @@
 from secrets import randbelow
-from src.packages.Utils.utils import fiat_shamir
+from src.packages.Utils.utils import fiat_shamir, get_str_val
 from src.packages.math.mod_expo import base_k_exp
 import gmpy2 as gmp
 
@@ -25,10 +25,7 @@ def generate_proof(p, q, generator, priv_key, pub_key, other_info=None):
     rnd_value = randbelow(q)
     commitment = base_k_exp(generator, rnd_value, p, K)
 
-    if other_info is not None:
-        str_val = str(other_info)
-    else:
-        str_val = ""
+    str_val = get_str_val(other_info)
 
     hash_value = fiat_shamir(p, q, generator, pub_key, commitment, str_val)
     challenge = gmp.f_mod(hash_value, q)
@@ -46,10 +43,7 @@ def verify_proof(p, q, generator, pub_key, commitment, response, other_info=None
     :return: A boolean value: True for valid proof, false otherwise.
     """
 
-    if other_info is not None:
-        str_val = str(other_info)
-    else:
-        str_val = ""
+    str_val = get_str_val(other_info)
 
     hash_value = fiat_shamir(p, q, generator, pub_key, commitment, str_val)
     challenge = gmp.f_mod(hash_value, q)
