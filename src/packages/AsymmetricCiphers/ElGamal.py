@@ -37,7 +37,7 @@ class ElGamalBase:
             raise AttributeError("Group parameters must be instantiated first.")
 
         self.__priv_key = randbits(self.bits - 1)
-        self.__pub_key = base_k_exp(self.generator, self.__priv_key, self.modulus, K)
+        self.__pub_key = int(base_k_exp(self.generator, self.__priv_key, self.modulus, K))
 
     def set_keys(self, public, private):
         self.__pub_key = public
@@ -78,6 +78,7 @@ class ElGamalBase:
                 "Group parameters must be of type (x, y) where x is modulus and y is generator."
             )
         self.modulus = group_params[0]
+        self.q = (self.modulus-1) >> 1 
         self.generator = group_params[1]
 
     def re_encrypt(self, ciphertext, rnd_value, key):
@@ -196,7 +197,7 @@ class AddElGamal(ElGamalBase):
         self.modulus = group_params[0]
         self.generator = group_params[1]
         self.beta = group_params[2]
-
+        
     def encrypt(self, plaintext, key):
         if plaintext >= self.q:
             raise AttributeError("Invalid plaintext. Parmeter must be smaller than q")
