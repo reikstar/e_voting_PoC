@@ -12,13 +12,13 @@ SIZE = 2048
 PORT = 9999
 ADDRESS = ('localhost', PORT)
 HEADERSIZE = 30
-PATH = 'evoting/population.json'
+root_directory = get_root_directory()
+PATH = os.path.join(root_directory,'population.json')
 
 
 # Function for artificially generating a person in ID scheme.
 def register_user (name):
-    root_directory = get_root_directory()
-    file_path = os.path.join(root_directory, "population.json")
+    file_path = PATH
     c = AddElGamal(SIZE)
     c.generate_params()
     c.generate_keys()
