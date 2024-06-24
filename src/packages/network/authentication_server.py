@@ -50,7 +50,7 @@ def search_user(name, pub_key, path):
     
 
 def handle_client(client_socket, address):
-    send_msg(client_socket, "welcome!")
+    send_msg(client_socket, "Welcome! Please insert ID card into card reader for authentication.")
     
     connected = True
     while connected:
