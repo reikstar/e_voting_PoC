@@ -21,7 +21,6 @@ def base_k_exp(n, exp, mod, k):
 
     n = gmp.f_mod(n, mod)
     mod = gmp.mpz(mod)
-
     base_k_exp = gmp.digits(exp, 2**k)
 
     pre_comps = [gmp.mpz(1)]
@@ -32,10 +31,8 @@ def base_k_exp(n, exp, mod, k):
 
     for i in range(1, len(base_k_exp)):
         digit = int(base_k_exp[i])
-
         for j in range(k):
             result = gmp.f_mod(gmp.square(result), mod)
-
         if digit != 0:
             result = gmp.f_mod(pre_comps[digit] * result, mod)
 

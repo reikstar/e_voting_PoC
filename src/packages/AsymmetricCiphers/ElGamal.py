@@ -1,6 +1,6 @@
 from src.packages.math.prime import getSafePrime, jacobi_symbol
 from src.packages.math.mod_expo import base_k_exp
-from secrets import randbits, randbelow
+from secrets import randbelow
 import gmpy2 as gmp
 from threading import Thread, Event
 
@@ -36,7 +36,7 @@ class ElGamalBase:
         if self.modulus is None or self.generator is None:
             raise AttributeError("Group parameters must be instantiated first.")
 
-        self.__priv_key = randbits(self.bits - 1)
+        self.__priv_key = randbelow(self.q + 1)
         self.__pub_key = int(base_k_exp(self.generator, self.__priv_key, self.modulus, K))
 
     def set_keys(self, public, private):
@@ -173,7 +173,7 @@ class MulElGamal(ElGamalBase):
             base_k_exp(c1, self.priv_key, self.modulus, K), self.modulus
         )
         encoded_val = gmp.f_mod(gmp.mul(c2, decryption_val), self.modulus)
-        plaintext = base_k_exp(encoded_val, (self.q + 1) >> 1, self.modulus, K)
+        plaintext = int(base_k_exp(encoded_val, (self.q + 1) >> 1, self.modulus, K))
 
         return plaintext if plaintext <= self.q else self.modulus - plaintext
 

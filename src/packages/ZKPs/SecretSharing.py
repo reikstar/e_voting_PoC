@@ -1,8 +1,8 @@
 from secrets import randbelow
 from src.packages.math.mod_polynomial import Modular_Polynomial
 from src.packages.math.mod_expo import base_k_exp
-from src.packages.AsymmetricCiphers.ElGamal import MulElGamal
 from src.packages.Utils.utils import fiat_shamir
+from src.packages.AsymmetricCiphers.ElGamal import MulElGamal
 
 K = 3
 
@@ -65,7 +65,8 @@ def dlog_verify(g1, h1, g2, h2, p, q, commitments, response):
     return True
 
 
-class SecretSharing:
+class PublicSecretSharing:
+    #beta is group generator, alfa is 4
     def __init__(self, p, q, alfa, beta):
         self.p = p
         self.q = q
@@ -142,4 +143,57 @@ class SecretSharing:
             secret = gmp.f_mod(gmp.mul(secret, exponentiation), self.p)
 
         return secret
+
+class VerifiableSecretSharing:
+    def __init__(self, p, q, generator, threshold):
+        self.p = p
+        self.q = q
+        self.generator = generator
+        self.cipher = MulElGamal(1, True)
+        self.cipher.generate_params((p, generator))
+        self.threshold = threshold
+
+    def distribute_secret(self, participants_key, secret):
+        participants_number = len(participants_key)
+
+        # Generate polynomial coefficients and create the polynomial.
+        coefficients = [randbelow(self.q) for _ in range(self.threshold - 1)] # t-1 coefficients.
+        coefficients.append(secret) # Smallest order coefficient is the secret.
+        poly = Modular_Polynomial(coefficients, self.q)
+
+        # Starting from the highest order, we create commitment for each coeff.
+        coefficient_commitments = []  
+        for coeff in coefficients:
+            coefficient_commitments.append(int(base_k_exp(self.generator, coeff, self.p, K)))
+        
+        encryptions = []
+        for i in range(participants_number):
+            encryption = self.cipher.encrypt(poly(i+1), participants_key[i])
+            encryptions.append(encryption)
+        
+        return(encryptions, coefficient_commitments)
+    
+    def call_poly_from_commitment(self, coefficient_commitments, i):
+        X_i = 1
+        exp = self.threshold - 1
+        for j in range(self.threshold):
+            C_j = base_k_exp(coefficient_commitments[j], pow(i, exp, self.q), self.p, K)
+            X_i = gmp.f_mod(gmp.mul(X_i, C_j), self.p)
+            exp -= 1
+        
+        return int(X_i)
+        
+    
+    def verify_share(self, index, encryption, coefficient_commitments, private_key):
+        self.cipher.set_keys(0, private_key)
+        share = self.cipher.decrypt(encryption)
+
+        X_i = self.call_poly_from_commitment(coefficient_commitments, index)
+
+        if base_k_exp(self.generator, share, self.p, K) == X_i:
+            return True
+        else:
+            return False
+        
+
 

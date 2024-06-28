@@ -1,25 +1,31 @@
 import os
 from src.packages.Utils.utils import read_from_json, write_to_json, int_to_base64
-from src.packages.AsymmetricCiphers.ElGamal import AddElGamal
+from src.packages.AsymmetricCiphers.ElGamal import AddElGamal, MulElGamal
 import socket
 import threading
 import pickle
-import json
 from src.packages.Utils.network_utils import get_socket_msg, send_msg
 from src.packages.Utils.utils import return_user_params, get_root_directory
 from src.packages.ZKPs.Schnorr import verify_proof
+
 SIZE = 2048
 PORT = 9999
 ADDRESS = ('localhost', PORT)
-HEADERSIZE = 30
 root_directory = get_root_directory()
+current_dir = os.path.dirname(os.path.abspath(__file__))
 PATH = os.path.join(root_directory,'population.json')
+auth_path = os.path.join(current_dir,"auth_params.json")
+votes_directory = os.path.join(get_root_directory(), "vote_data")
 
+
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server.bind(ADDRESS)
 
 # Function for artificially generating a person in ID scheme.
 def register_user (name):
     file_path = PATH
-    c = AddElGamal(SIZE)
+    c = MulElGamal(SIZE)
     c.generate_params()
     c.generate_keys()
 
@@ -39,14 +45,33 @@ def register_user (name):
 
 def search_user(name, pub_key, path):
     
-    with open(path, "r") as json_file:
-        data = json.load(json_file)
-        
+        data = read_from_json(path)
         for index, entry in enumerate(data):
             if entry.get("NAME") == name and entry.get("PUB_KEY") == pub_key:
                 return index
         
         return -1  # Return -1 if no match is found
+
+def create_voter_file(voter_id, index_in_population):
+    path = os.path.join(votes_directory,f"voter_{voter_id}.json")
+    if os.path.exists(path):
+        return False
+    
+    data = read_from_json(PATH)[index_in_population]
+    
+    
+    entry = {
+        "NAME": voter_id,
+        "PUB_KEY": data["PUB_KEY"],
+        "MODULUS": data["MODULUS"],
+        "GENERATOR": data["GENERATOR"]
+    }
+
+    data = read_from_json(path)
+    data.append(entry)
+    write_to_json(path, data)
+
+
     
 
 def handle_client(client_socket, address):
@@ -78,10 +103,25 @@ def handle_client(client_socket, address):
 
             proof_verificaiton = verify_proof(modulus, q, generator, pub_key, zk_proof[0], zk_proof[1])
             
-            if proof_verificaiton is True:
+            if proof_verificaiton is True and create_voter_file(name, user_index) is not False:
                 send_msg(client_socket, "Succesfully authenticated.")
+                data = read_from_json(auth_path)
+                print(data)
+                for entry in data:
+                    if entry["AUTH_NO"] == 1:
+                        first_auth_port = entry["PORT"]
+                send_msg(client_socket, str(first_auth_port))
+
+
+
             else:
-                send_msg(client_socket, "Incorrect proof. Try again.")
+                if proof_verificaiton is False:
+                    print(1)
+                    send_msg(client_socket, "Incorrect proof. Try again.")
+
+                if create_voter_file(name, pub_key) is False:
+                    print(2)
+                    send_msg(client_socket, "Only 1 vote per person!.")
             
 
         else:
@@ -102,13 +142,9 @@ def start():
         thread.start()
         print("new thread started")
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-server.bind(ADDRESS)
-#register_user("andrei")
+
 start()
 
-    
         
 
 

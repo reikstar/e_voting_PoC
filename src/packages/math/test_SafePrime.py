@@ -10,7 +10,7 @@ def measure_execution_time(func, *args, **kwargs):
     return result, execution_time
 
 
-iterations = 1
+iterations = 10
 bits = 1000
 total_getSafePrime = 0
 for i in range(iterations):

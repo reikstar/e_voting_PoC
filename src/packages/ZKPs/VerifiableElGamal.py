@@ -104,7 +104,7 @@ def decryption_verify(
     return True
 
 
-def re_encyption_proof(
+def re_encryption_proof(
     p,
     q,
     generator,
@@ -173,7 +173,7 @@ def re_encyption_proof(
     return (commitment, response)
 
 
-def re_encyption_verify(
+def re_encryption_verify(
     p,
     q,
     generator,

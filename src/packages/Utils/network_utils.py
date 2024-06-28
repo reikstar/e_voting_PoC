@@ -1,4 +1,4 @@
-HEADERSIZE = 30
+HEADERSIZE = 300
 
 def get_socket_msg(_socket):
     try:
@@ -16,12 +16,10 @@ def get_socket_msg(_socket):
         return False
 
 def send_msg(_socket, data):
-    
     if not isinstance(data,bytes):
         data = bytes(data, 'utf-8')
-    
-    msg = bytes(f'{len(data):<{HEADERSIZE}}', 'utf-8') + data
 
+    msg = bytes(f'{len(data):<{HEADERSIZE}}', 'utf-8') + data
     try:
         _socket.send(msg)
     except Exception as e:

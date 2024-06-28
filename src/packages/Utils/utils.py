@@ -1,10 +1,12 @@
 import base64
 from hashlib import sha512
+import threading
 from src.packages.Utils.RFC3526Groups import dh_groups
 import gmpy2 as gmp
 import json
 import os
 HEADERSIZE = 30
+file_lock = threading.Lock()
 
 def hex_to_base64(hex_string):
     hex_string = hex_string.replace(" ", "").replace("\n", "")
@@ -40,16 +42,23 @@ def get_rfc_group(id):
 ###json utils
 
 def read_from_json(path):
-    if os.path.exists(path):
-        with open(path, 'r') as file:
-            return json.load(file)
-    else:
-        return []
+    with file_lock:
+        if os.path.exists(path):
+            with open(path, 'r') as file:
+                return json.load(file)
+        else:
+            return []
 
 
 def write_to_json(path, data):
-    with open(path, 'w') as file:
-        json.dump(data, file, indent=3)
+    with file_lock:
+        with open(path, 'w') as file:
+            json.dump(data, file, indent=3)
+
+def append_to_json(path, data):
+    with file_lock:
+        with open(path, 'a') as file:
+            json.dump(data, file, indent=3)
 
 
 def return_user_params(index, path):
