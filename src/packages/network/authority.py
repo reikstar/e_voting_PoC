@@ -6,8 +6,9 @@ import os
 from src.packages.AsymmetricCiphers.ElGamal import AddElGamal, MulElGamal
 from src.packages.Utils.network_utils import get_socket_msg, send_msg
 from src.packages.Utils.utils import base64_to_int, get_root_directory, int_to_base64, read_from_json, write_to_json
-from src.packages.ZKPs.SecretSharing import VerifiableSecretSharing
+from src.packages.ZKPs.SecretSharing import VerifiableSecretSharing, dlog_eq, dlog_verify
 import src.packages.ZKPs.VerifiableElGamal as ElGamalZKP
+from src.packages.math.mod_expo import base_k_exp
 
 
 votes_directory = os.path.join(get_root_directory(), "vote_data")
@@ -15,7 +16,10 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 param_path = os.path.join(current_dir, "group_params.json")
 auth_path = os.path.join(current_dir, "auth_params.json")
 poly_path = os.path.join(current_dir, "polynomial_commitments.json")
+decrypted_votes_path = os.path.join(current_dir, "decrypted_votes.json")
 
+
+stop_event = threading.Event()
 BOARD_ADDRESS = ('localhost', 9990)
 
 def set_cipher_setup():
@@ -58,7 +62,7 @@ def share_pub_key(authority_number, cipher, port):
     data.append(entry)
     write_to_json(auth_path, data)
 
-def get_share_and_verify(auth_number, auth_port, cipher):
+def get_share_and_verify(auth_number, cipher):
     board_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         board_socket.connect(BOARD_ADDRESS)
@@ -85,6 +89,10 @@ def get_share_and_verify(auth_number, auth_port, cipher):
 
     except ConnectionError as e:
         print(f"Connection error: {e}")
+
+    decrypted_share = cipher.decrypt(encrypted_share)
+    
+    return decrypted_share
 
 def next_authority_port(auth_number):
     data = read_from_json(auth_path)
@@ -212,19 +220,56 @@ def vote_process(auth_number, port):
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind(address)
     server.listen()
-    while True:
-        conn, addr = server.accept()
-        thread = threading.Thread(target=handle_voter, args=(auth_number, conn))
-        thread.start()
+    while not stop_event.is_set():
+        try:
+            server.settimeout(1)  # Check for the stop event every second
+            conn, addr = server.accept()
+            thread = threading.Thread(target=handle_voter, args=(auth_number, conn))
+            thread.start()
+        except socket.timeout:
+            continue
+    server.close()
+
+def post_decryption_and_proof(share, auth_number):
+    data = read_from_json(param_path)
+    total_votes = pickle.loads(bytes.fromhex(data[0]["TOTAL_VOTES"]))
+    data = read_from_json(auth_path)
+    for entry in data:
+        if entry["AUTH_NO"] == auth_number:
+            auth_commitment = base64_to_int(entry["SHARE_COMMITMENT"])
+    cipher = set_additive_cipher()
+
+    decrypted_x = int(base_k_exp(total_votes[0], share, cipher.modulus, 3))
+    
+    proof = dlog_eq(total_votes[0], decrypted_x, cipher.generator, auth_commitment, cipher.modulus, cipher.q, share)
+    proof_data = bytes.hex(pickle.dumps(proof))
+    entry = {
+        "DECRYPTED_VOTE": int_to_base64(decrypted_x),
+        "PROOF": proof_data,
+        "AUTH_NO": auth_number
+    } 
+
+    data = read_from_json(decrypted_votes_path)
+    data.append(entry)
+    write_to_json(decrypted_votes_path, data)
+
+
+
 
 def start():
     not_known = True
-    print("""Commands: 
-          1-> Register and share key
-          2-> Receive secret share
-          3-> Start voting process.""")
+    global stop_event
+    vote_thread = None
     
     while True:
+        
+        print("""Commands: 
+          1-> Register and share key
+          2-> Receive secret share
+          3-> Start voting process
+          4-> Stop voting process
+          5-> Post vote decryption""")
+        
         command = input()
 
         if not_known and command == "1":
@@ -240,9 +285,24 @@ def start():
             continue
 
         if command == "2":
-            get_share_and_verify(auth_number, auth_port, cipher)
+            share = get_share_and_verify(auth_number, cipher)
 
         if command == "3":
-            vote_process(auth_number, auth_port)
+            if vote_thread is None or not vote_thread.is_alive():
+                stop_event.clear()
+                vote_thread = threading.Thread(target=vote_process, args=(auth_number, auth_port))
+                vote_thread.start()
+            else:
+                print("Voting process is already running.")
+
+        if command == "4":
+            stop_event.set()
+            if vote_thread is not None:
+                vote_thread.join()
+                print("Voting process stopped.")
+            else:
+                print("No voting process to stop.")
+        if command == "5":
+            post_decryption_and_proof(share, auth_number)
 
 start()

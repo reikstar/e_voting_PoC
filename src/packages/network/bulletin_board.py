@@ -4,11 +4,11 @@ import socket
 import threading
 from src.packages.AsymmetricCiphers.ElGamal import AddElGamal, MulElGamal
 from src.packages.Utils.network_utils import get_socket_msg, send_msg
-from src.packages.Utils.utils import base64_to_int, get_rfc_group, int_to_base64, read_from_json, write_to_json
+from src.packages.Utils.utils import base64_to_int, get_rfc_group, int_to_base64, read_from_json, write_to_json, get_root_directory
 import os
 import gmpy2 as gmp
 
-from src.packages.ZKPs.SecretSharing import VerifiableSecretSharing
+from src.packages.ZKPs.SecretSharing import VerifiableSecretSharing, dlog_verify
 from src.packages.math.mod_expo import base_k_exp
 PORT = 9990
 ADDRESS = (('localhost', PORT))
@@ -19,6 +19,8 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 param_path = os.path.join(current_dir,"group_params.json")
 auth_path = os.path.join(current_dir,"auth_params.json")
 poly_path = os.path.join(current_dir,"polynomial_commitments.json")
+votes_directory = os.path.join(get_root_directory(), "vote_data")
+decrypted_votes_path = os.path.join(current_dir, "decrypted_votes.json")
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -133,6 +135,93 @@ def post_std_votes():
     data[0]["NO_VOTE"] = no_data
     write_to_json(param_path, data)
 
+def aggregate_votes(cipher = AddElGamal):
+
+    total_votes = (1, 1)
+    directory_content = os.listdir(votes_directory)
+    files = [file for file in directory_content if os.path.isfile(os.path.join(votes_directory, file))]
+    
+    for file in files:
+        data = read_from_json(os.path.join(votes_directory,  file))
+        if data[-1]["CASTED_VOTE"] == "1":
+            hex_vote = data[-2]["FIRST_VOTE"]
+        else:
+            hex_vote = data[-2]["SECOND_VOTE"]
+
+        vote = pickle.loads(bytes.fromhex(hex_vote))
+        total_votes = cipher.homomorphic_mul(total_votes, vote)
+    
+    
+    data = read_from_json(param_path)
+    data[0]["TOTAL_VOTES"] = bytes.hex(pickle.dumps(total_votes))
+
+    write_to_json(param_path, data)
+    data = read_from_json(decrypted_votes_path)
+    write_to_json(decrypted_votes_path,data)
+
+def get_lagrange_coeff(index, index_list, cipher= AddElGamal):
+
+    numerator = 1
+    denominator = 1
+    for i in index_list:
+        if i == index:
+            continue
+        numerator = (numerator * i) % cipher.q
+        denominator = gmp.f_mod(denominator * gmp.f_mod((i - index), cipher.q), cipher.q)
+    
+    denominator = gmp.invert(denominator, cipher.q) 
+
+    coeff = int(gmp.f_mod(gmp.mul(numerator, denominator), cipher.q))
+    return coeff
+
+def get_decryption_with_correct_proof(total_votes, threshold, cipher= AddElGamal):
+    correct_decryptions = []
+    auth_data = read_from_json(auth_path)
+    decrypted_votes_list = read_from_json(decrypted_votes_path)
+
+    for entry in decrypted_votes_list:
+        proof = pickle.loads(bytes.fromhex(entry["PROOF"]))
+        auth_number = entry["AUTH_NO"]
+        decrypted_x = base64_to_int(entry["DECRYPTED_VOTE"])
+
+        for data in auth_data:
+            if data["AUTH_NO"] == auth_number:
+                auth_commitment = base64_to_int(data["SHARE_COMMITMENT"])
+        
+        correct_proof = dlog_verify(total_votes[0], decrypted_x, cipher.generator, auth_commitment, cipher.modulus, cipher.q, proof[0], proof[1])
+        
+        if correct_proof:
+            correct_decryptions.append(entry)
+
+    if len(correct_decryptions) >= threshold:
+        return correct_decryptions
+        
+    else:
+         print("Not enough decryptions.")
+    
+
+def tally_votes(threshold, cipher = AddElGamal):
+    data = read_from_json(param_path)
+    total_votes = pickle.loads(bytes.fromhex(data[0]["TOTAL_VOTES"]))
+    correct_decryptions = get_decryption_with_correct_proof(total_votes, threshold, cipher)
+    index_list = []
+    for decryption in correct_decryptions:
+        index_list.append(decryption["AUTH_NO"])
+    
+    denominator = 1
+
+    for decryption in correct_decryptions:
+        decrypted_value = base_k_exp(base64_to_int(decryption["DECRYPTED_VOTE"]), get_lagrange_coeff(decryption["AUTH_NO"], index_list, cipher), cipher.modulus, K)
+        denominator = gmp.f_mod(gmp.mul(denominator, decrypted_value), cipher.modulus)
+    
+    decrypted_votes = int(gmp.f_mod(gmp.mul(total_votes[1], gmp.invert(denominator, cipher.modulus)), cipher.modulus))
+    votes = cipher.decode_val(decrypted_votes)
+
+    print(f"TOTAL OF VOTES:{votes}")
+    
+
+   
+        
 def start():
     print("Modulus size:")
     bits = int(input())
@@ -143,6 +232,8 @@ def start():
         print("Commands:\n1-> Give threshold size. Generate shares.")
         print("2-> Start handling authorities connections.\nIf no connection made for 30 seconds, end sharing phase.")
         print("3-> Post standard votes.")
+        print("4-> Aggregate votes.")
+        print("5-> Tally votes.")
 
         command = input()
         if command == "1":
@@ -163,8 +254,12 @@ def start():
 
         elif command == "3":
             post_std_votes()
+        elif command == "4":
+            aggregate_votes(cipher)
+        elif command == "5":
+            add_cipher = AddElGamal(1, True)
+            add_cipher.generate_params((cipher.modulus, cipher.generator, 4))
+            tally_votes(threshold, add_cipher)
+
 
 start()
-
-        
-    

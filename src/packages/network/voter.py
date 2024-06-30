@@ -160,49 +160,51 @@ def get_proofs_from_encryptions(data = bytes):
     return proofs
 
 
-def handle_authority(auth_port, auth_number, add_cipher, switched = 0):
-    
-    authority_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    authority_socket.connect(('localhost', auth_port))
-    send_msg(authority_socket, name.encode('utf-8'))
-    
-    msg = get_socket_msg(authority_socket).decode('utf-8')
-    print(msg)
-
-    print(f"Verification of reencryption list is: {verify_re_encryption_list(auth_number, add_cipher)}")
-    msg = get_socket_msg(authority_socket)
-    output = get_proofs_from_encryptions(msg)
-    switched = (switched + output[2]) % 2
-    
-    print(f"Verification of designated verifier proofs is: {verify_designated_proofs(auth_number, output, add_cipher)}")
-    msg = get_socket_msg(authority_socket).decode('utf-8')
-    if msg == "Please cast your vote.":
-        print(msg)
-        if(switched == 1):
-            print("Order is SWITCHED!")
-        if(switched == 0):
-            print("Order is EQUAL.")
+def handle_authority(auth_port, auth_number, add_cipher, switched=0):
+    try:
+        authority_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        authority_socket.connect(('localhost', auth_port))
+        send_msg(authority_socket, name.encode('utf-8'))
         
-        invalid_input = True
-        while invalid_input:
-            print("Input 1 for first vote, or 2 for second vote.")
-            vote = input()
-            if vote == "1" or vote == "2":
-                vote_file = os.path.join(votes_directory, f"voter_{name}.json")
+        msg = get_socket_msg(authority_socket).decode('utf-8')
+        print(msg)
 
-                data = read_from_json(vote_file)
-                data.append({"CASTED VOTE": vote})
-                write_to_json(vote_file,data)
-                invalid_input = False
-            else:
-                print("Invalid input.")
+        print(f"Verification of re-encryption list is: {verify_re_encryption_list(auth_number, add_cipher)}")
+        msg = get_socket_msg(authority_socket)
+        output = get_proofs_from_encryptions(msg)
+        switched = (switched + output[2]) % 2
+        
+        print(f"Verification of designated verifier proofs is: {verify_designated_proofs(auth_number, output, add_cipher)}")
+        msg = get_socket_msg(authority_socket).decode('utf-8')
+        if msg == "Please cast your vote.":
+            print(msg)
+            if switched == 1:
+                print("Order is SWITCHED!")
+            if switched == 0:
+                print("Order is EQUAL.")
+            
+            invalid_input = True
+            while invalid_input:
+                print("Input 1 for first vote, or 2 for second vote.")
+                vote = input()
+                if vote == "1" or vote == "2":
+                    vote_file = os.path.join(votes_directory, f"voter_{name}.json")
 
+                    data = read_from_json(vote_file)
+                    data.append({"CASTED_VOTE": vote})
+                    write_to_json(vote_file, data)
+                    invalid_input = False
+                else:
+                    print("Invalid input.")
 
+            authority_socket.close()
+        else:
+            next_auth_port = int(msg)
+            authority_socket.close()
+            handle_authority(next_auth_port, auth_number + 1, add_cipher, switched)
+    except Exception as e:
+        print(f"Error handling authority at port {auth_port}: {e}")
         authority_socket.close()
-    else:
-        next_auth_port = int(msg)
-        authority_socket.close()
-        handle_authority(next_auth_port, auth_number+1, add_cipher, switched)
 
 def start():
     authenticated = False
@@ -211,15 +213,19 @@ def start():
         command = input()
 
         if command == "1":
-            if authenticated is False:
-                auth_port = int(authentication(name, voter_cipher.pub_key, voter_cipher.priv_key, voter_cipher.modulus, voter_cipher.q, voter_cipher.generator))
-                authenticated = True
+            if not authenticated:
+                try:
+                    auth_port = int(authentication(name, voter_cipher.pub_key, voter_cipher.priv_key, voter_cipher.modulus, voter_cipher.q, voter_cipher.generator))
+                    authenticated = True
+                except Exception as e:
+                    print(f"Authentication error: {e}")
         elif command == "2":
             try:
+                if not authenticated:
+                    print("You need to authenticate first to get the authority port.")
+                    continue
                 cipher = set_additive_cipher()
                 handle_authority(auth_port, 1, cipher)
-            except NameError:
-                print("You need to authenticate first to get the authority port.")
             except Exception as e:
                 print(f"Error: {e}")
             break

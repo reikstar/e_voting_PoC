@@ -1,5 +1,5 @@
 import os
-from src.packages.Utils.utils import read_from_json, write_to_json, int_to_base64
+from src.packages.Utils.utils import get_rfc_group, read_from_json, write_to_json, int_to_base64
 from src.packages.AsymmetricCiphers.ElGamal import AddElGamal, MulElGamal
 import socket
 import threading
@@ -23,10 +23,18 @@ server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server.bind(ADDRESS)
 
 # Function for artificially generating a person in ID scheme.
-def register_user (name):
+def register_user (name, bit_size, RFC_GROUP = None):
     file_path = PATH
-    c = MulElGamal(SIZE)
-    c.generate_params()
+
+    if RFC_GROUP is None:
+        c = MulElGamal(bit_size)
+        c.generate_params()
+    else:
+        params = get_rfc_group(RFC_GROUP)
+        c = MulElGamal(params[0], True)
+        c.generate_params((params[1],params[2]))
+
+        
     c.generate_keys()
 
     entry = {
@@ -135,15 +143,36 @@ def handle_client(client_socket, address):
 
 
 def start():
+    print("AUTHENTICATION SERVER STARTED.")
     server.listen()
     while True:
         conn, addr = server.accept()
         thread = threading.Thread(target = handle_client, args = (conn, addr))
         thread.start()
         print("new thread started")
+while True:
+    print("Commands:\n1-> Create ID_CARD in database.\nProvide name, bit_size or RFC Group")
+    print("\n2-> Start authentication server. ")
+    command = input()
+    if command == "1":
+        print("Enter name:")
+        name = input()
+        print("Enter bit size:")
+        bit_size = int(input())
+        print("RFC_GROUP? Enter yes or no.")
+        command = input()
+        if command == "no":
+            register_user(name, bit_size)
+        elif command == "yes":
+            print("Please input RFC Group ID:")
+            id = int(input())
+            register_user(name,1,RFC_GROUP= id)
+        else:
+            print("Invalid command.")
+    elif command == "2":
+        start()
+    
 
-
-start()
 
         
 

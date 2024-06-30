@@ -212,20 +212,11 @@ class AddElGamal(ElGamalBase):
         )
 
         return (int(c1), int(c2))
-
-    def decrypt(self, ciphertext):
-        """
-        Decrypt a ciphertext with object's private key. Note that this is slower than
-        classic ElGamal, because it's required to find the discrete logarithm of beta^m.
-        Using two threads to check in both directions.
-
-        :param ciphertext: Tuple containing (c1, c2) components of ciphertext.
-
-        :return: Decrypted ciphertext.
-        """
+    
+    def decode_val(self, encoded_val):
         result = [None]
         event = Event()
-
+    
         # Brute forcing worker function for the discrete logarithm.
         # Both directions available for worker threads.
         def brute_foce(direction, result, event, encoded_val):
@@ -250,16 +241,6 @@ class AddElGamal(ElGamalBase):
                     else:
                         result[0] = i
                         return
-
-        c1, c2 = ciphertext[0], ciphertext[1]
-        if c2 > self.modulus - 1 or c1 > self.modulus - 1:
-            raise AttributeError("Invalid ciphertext, parameters bigger than modulus.")
-
-        decryption_val = gmp.invert(
-            base_k_exp(c1, self.priv_key, self.modulus, K), self.modulus
-        )
-        encoded_val = gmp.f_mod(gmp.mul(c2, decryption_val), self.modulus)
-
         left_thread = Thread(
             target=brute_foce, args=("left", result, event, encoded_val)
         )
@@ -273,3 +254,29 @@ class AddElGamal(ElGamalBase):
         right_thread.join()
 
         return result[0]
+
+    def decrypt(self, ciphertext):
+        """
+        Decrypt a ciphertext with object's private key. Note that this is slower than
+        classic ElGamal, because it's required to find the discrete logarithm of beta^m.
+        Using two threads to check in both directions.
+
+        :param ciphertext: Tuple containing (c1, c2) components of ciphertext.
+
+        :return: Decrypted ciphertext.
+        """
+
+        c1, c2 = ciphertext[0], ciphertext[1]
+        if c2 > self.modulus - 1 or c1 > self.modulus - 1:
+            raise AttributeError("Invalid ciphertext, parameters bigger than modulus.")
+
+        decryption_val = gmp.invert(
+            base_k_exp(c1, self.priv_key, self.modulus, K), self.modulus
+        )
+
+        encoded_val = gmp.f_mod(gmp.mul(c2, decryption_val), self.modulus)
+        plaintext = self.decode_val(encoded_val)
+
+        return plaintext
+
+        
