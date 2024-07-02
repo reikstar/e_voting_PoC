@@ -267,7 +267,7 @@ def re_encryption_or_proof(
     """
     Generate an OR-proof for verifiable re-encryption. Given a ciphertext, a list
     of encryptions and the index of the re-encryption in the list, function provides
-    a proof that in the list there exists one re-encryption of the ciphertext without 
+    a proof that in the list there exists one re-encryption of the ciphertext without
     specifying which one.
 
     :param p: Group modulus.
@@ -281,7 +281,7 @@ def re_encryption_or_proof(
     :param other_info: Extra info for Fiat-Shamir transformatioan (timestamp,id...etc).
 
     :return: A tuple containing the commitment and response.
-    
+
     """
     str_val = get_str_val(other_info)
 
@@ -317,10 +317,12 @@ def re_encryption_or_proof(
             continue
         commitment_sum += rnd_list1[i]
 
-    rnd_list1[r_enc_index] = int(gmp.f_mod(challenge - commitment_sum, q))  # updated d_t
-    rnd_list2[r_enc_index] = int(gmp.f_mod(
-        chameleon_value - gmp.mul(r_enc_factor, rnd_list1[r_enc_index]), q
-    ))  # updated r_t
+    rnd_list1[r_enc_index] = int(
+        gmp.f_mod(challenge - commitment_sum, q)
+    )  # updated d_t
+    rnd_list2[r_enc_index] = int(
+        gmp.f_mod(chameleon_value - gmp.mul(r_enc_factor, rnd_list1[r_enc_index]), q)
+    )  # updated r_t
 
     response = (rnd_list1, rnd_list2)
 
@@ -353,7 +355,7 @@ def re_encryption_or_verify(
 
     :return: A boolean value: True for valid proof, false otherwise.
 
-    """    
+    """
     str_val = get_str_val(other_info)
     inv_ciphertext = invert_ciphertext(ciphertext, p)
 

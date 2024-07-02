@@ -45,7 +45,7 @@ def re_encryption_verify(
     ciphertext: Tuple[int, int],
     r_enc_ciphertext: Tuple[int, int],
     other_info: Optional[Any] = None,
-) -> bool:...
+) -> bool: ...
 def re_encryption_or_proof(
     p: int,
     q: int,
@@ -56,7 +56,7 @@ def re_encryption_or_proof(
     r_enc_factor: int,
     encryption_list: List[Tuple[int, int]],
     other_info: Optional[Any] = None,
-) -> Tuple[List[Tuple[int, int]], Tuple[List[int], List[int]]]:...
+) -> Tuple[List[Tuple[int, int]], Tuple[List[int], List[int]]]: ...
 def re_encryption_or_verify(
     p: int,
     q: int,
@@ -67,4 +67,4 @@ def re_encryption_or_verify(
     commitment: List[Tuple[int, int]],
     response: Tuple[List[int], List[int]],
     other_info: Optional[Any] = None,
-) -> bool:...
+) -> bool: ...

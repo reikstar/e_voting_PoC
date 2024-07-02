@@ -37,7 +37,9 @@ class ElGamalBase:
             raise AttributeError("Group parameters must be instantiated first.")
 
         self.__priv_key = randbelow(self.q + 1)
-        self.__pub_key = int(base_k_exp(self.generator, self.__priv_key, self.modulus, K))
+        self.__pub_key = int(
+            base_k_exp(self.generator, self.__priv_key, self.modulus, K)
+        )
 
     def set_keys(self, public, private):
         self.__pub_key = public
@@ -78,7 +80,7 @@ class ElGamalBase:
                 "Group parameters must be of type (x, y) where x is modulus and y is generator."
             )
         self.modulus = group_params[0]
-        self.q = (self.modulus-1) >> 1 
+        self.q = (self.modulus - 1) >> 1
         self.generator = group_params[1]
 
     def re_encrypt(self, ciphertext, rnd_value, key):
@@ -197,7 +199,7 @@ class AddElGamal(ElGamalBase):
         self.modulus = group_params[0]
         self.generator = group_params[1]
         self.beta = group_params[2]
-        
+
     def encrypt(self, plaintext, key):
         if plaintext >= self.q:
             raise AttributeError("Invalid plaintext. Parmeter must be smaller than q")
@@ -212,11 +214,11 @@ class AddElGamal(ElGamalBase):
         )
 
         return (int(c1), int(c2))
-    
+
     def decode_val(self, encoded_val):
         result = [None]
         event = Event()
-    
+
         # Brute forcing worker function for the discrete logarithm.
         # Both directions available for worker threads.
         def brute_foce(direction, result, event, encoded_val):
@@ -241,6 +243,7 @@ class AddElGamal(ElGamalBase):
                     else:
                         result[0] = i
                         return
+
         left_thread = Thread(
             target=brute_foce, args=("left", result, event, encoded_val)
         )
@@ -278,5 +281,3 @@ class AddElGamal(ElGamalBase):
         plaintext = self.decode_val(encoded_val)
 
         return plaintext
-
-        
